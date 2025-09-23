@@ -2,12 +2,18 @@ package com.lcwd.user.service.services.impl;
 
 import com.lcwd.user.service.entities.User;
 import com.lcwd.user.service.exceptions.ResourceNotFoundException;
+import com.lcwd.user.service.payload.HotelDto;
+import com.lcwd.user.service.payload.RatingDto;
 import com.lcwd.user.service.payload.UserDto;
 import com.lcwd.user.service.repositories.UserRepository;
 import com.lcwd.user.service.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.modelmapper.ModelMapper;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 import java.util.UUID;
@@ -21,6 +27,11 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private ModelMapper modelMapper;
+
+    @Autowired
+    private RestTemplate restTemplate;
+
+//    private Logger logger = (Logger) LoggerFactory.getLogger(UserServiceImpl.class);
 
     @Override
     public UserDto saveUser(UserDto userDto) {
@@ -41,8 +52,24 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserDto getUser(String userId) {
+        //getting user from database with the help of user repository
         User user = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User with given id not found on server :  " + userId));
-        return modelMapper.map(user,UserDto.class);
+        UserDto userDto = modelMapper.map(user,UserDto.class);
+
+        //fetch ratings by userId from Rating Service
+        ResponseEntity<List<RatingDto>> response = restTemplate.exchange("http://RATING-SERVICE/ratings/users/" + userId, HttpMethod.GET, null, new ParameterizedTypeReference<List<RatingDto>>() {});
+        List<RatingDto> ratingDtoList = response.getBody();
+
+        List<RatingDto> ratingDtoList1 = ratingDtoList.stream().map(ratingDto -> {
+            //fetch hotels
+            HotelDto hotelDto = restTemplate.getForObject("http://HOTEL-SERVICE/hotels/"+ratingDto.getHotelId(), HotelDto.class);
+            ratingDto.setHotelDto(hotelDto);
+            return ratingDto;
+        }).collect(Collectors.toList());
+
+        userDto.setRatingList(ratingDtoList1);
+
+        return userDto;
     }
 
     @Override

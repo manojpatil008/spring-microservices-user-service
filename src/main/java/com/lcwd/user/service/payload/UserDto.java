@@ -1,5 +1,6 @@
 package com.lcwd.user.service.payload;
 
+import com.lcwd.user.service.entities.Rating;
 import lombok.Data;
 
 import java.util.List;
@@ -10,4 +11,5 @@ public class UserDto {
     private String name;
     private String email;
     private String about;
+    private List<RatingDto> ratingList;
 }
