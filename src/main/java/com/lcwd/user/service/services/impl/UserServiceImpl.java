@@ -2,6 +2,8 @@ package com.lcwd.user.service.services.impl;
 
 import com.lcwd.user.service.entities.User;
 import com.lcwd.user.service.exceptions.ResourceNotFoundException;
+import com.lcwd.user.service.external.service.HotelService;
+import com.lcwd.user.service.external.service.RatingService;
 import com.lcwd.user.service.payload.HotelDto;
 import com.lcwd.user.service.payload.RatingDto;
 import com.lcwd.user.service.payload.UserDto;
@@ -31,6 +33,12 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private RestTemplate restTemplate;
 
+    @Autowired
+    private HotelService hotelService;
+
+    @Autowired
+    private RatingService ratingService;
+
 //    private Logger logger = (Logger) LoggerFactory.getLogger(UserServiceImpl.class);
 
     @Override
@@ -57,12 +65,12 @@ public class UserServiceImpl implements UserService {
         UserDto userDto = modelMapper.map(user,UserDto.class);
 
         //fetch ratings by userId from Rating Service
-        ResponseEntity<List<RatingDto>> response = restTemplate.exchange("http://RATING-SERVICE/ratings/users/" + userId, HttpMethod.GET, null, new ParameterizedTypeReference<List<RatingDto>>() {});
+        ResponseEntity<List<RatingDto>> response = ratingService.getRatingByUserId(userId);
         List<RatingDto> ratingDtoList = response.getBody();
 
         List<RatingDto> ratingDtoList1 = ratingDtoList.stream().map(ratingDto -> {
             //fetch hotels
-            HotelDto hotelDto = restTemplate.getForObject("http://HOTEL-SERVICE/hotels/"+ratingDto.getHotelId(), HotelDto.class);
+            HotelDto hotelDto = hotelService.getHotel(ratingDto.getHotelId());
             ratingDto.setHotelDto(hotelDto);
             return ratingDto;
         }).collect(Collectors.toList());

@@ -14,5 +14,6 @@ public class RatingDto {
     private String userId;
     private String hotelId;
     private int rating;
+    private String feedback;
     private HotelDto hotelDto;
 }

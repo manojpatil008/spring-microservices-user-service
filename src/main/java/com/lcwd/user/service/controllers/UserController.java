@@ -1,7 +1,9 @@
 package com.lcwd.user.service.controllers;
 
 import com.lcwd.user.service.entities.User;
+import com.lcwd.user.service.external.service.RatingService;
 import com.lcwd.user.service.payload.ApiResponse;
+import com.lcwd.user.service.payload.RatingDto;
 import com.lcwd.user.service.payload.UserDto;
 import com.lcwd.user.service.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +19,9 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private RatingService ratingService;
 
     //create user
     @PostMapping
@@ -52,5 +57,13 @@ public class UserController {
     public ResponseEntity<UserDto> updateUser(@RequestBody UserDto userDto, @PathVariable String userId){
         UserDto userDto1 = userService.updateUser(userDto, userId);
         return new ResponseEntity<UserDto>(userDto1,HttpStatus.OK);
+    }
+
+    //Creating Rating for user
+    @PostMapping("/{userId}/ratings")
+    public ResponseEntity<RatingDto> creatingRatingForUser(@PathVariable String userId, @RequestBody RatingDto ratingDto){
+        ratingDto.setUserId(userId);
+        RatingDto rating = ratingService.createRating(ratingDto);
+        return new ResponseEntity<RatingDto>(rating,HttpStatus.OK);
     }
 }
