@@ -1,11 +1,15 @@
 package com.lcwd.user.service.controllers;
 
-import com.lcwd.user.service.entities.User;
 import com.lcwd.user.service.external.service.RatingService;
 import com.lcwd.user.service.payload.ApiResponse;
 import com.lcwd.user.service.payload.RatingDto;
 import com.lcwd.user.service.payload.UserDto;
 import com.lcwd.user.service.services.UserService;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import io.github.resilience4j.retry.annotation.Retry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +27,8 @@ public class UserController {
     @Autowired
     private RatingService ratingService;
 
+    private static final Logger logger = LoggerFactory.getLogger(UserController.class);
+
     //create user
     @PostMapping
     public ResponseEntity<UserDto> createUser(@RequestBody UserDto userDto){
@@ -38,11 +44,30 @@ public class UserController {
         return new ResponseEntity<List<UserDto>>(allUsers,HttpStatus.OK);
     }
 
+    int retryCount = 1;
+
     //get single user
     @GetMapping("/{userId}")
+    @CircuitBreaker(name = "ratingHotelBreaker",fallbackMethod = "ratingHotelFallback")
+    @Retry(name = "ratingHotelService",fallbackMethod = "ratingHotelFallback")
+    @RateLimiter(name = "userRateLimiter",fallbackMethod = "ratingHotelFallback")
     public ResponseEntity<UserDto> getUserById(@PathVariable String userId){
+        logger.info("Retry count : {}", retryCount);
+        retryCount++;
         UserDto userDto = userService.getUser(userId);
         return new ResponseEntity<UserDto>(userDto,HttpStatus.OK);
+    }
+
+    //Fall back method for circuitbreaker
+    public ResponseEntity<UserDto> ratingHotelFallback(String userId,Exception ex){
+        logger.info("Fallback is executed because service is down : " + ex.getMessage());
+        UserDto userDto = UserDto.builder()
+                .email("dummy@gmail.com")
+                .name("Dummy")
+                .about("This user is created dummy because some service is down")
+                .userId("13322")
+                .build();
+        return new ResponseEntity<>(userDto,HttpStatus.OK);
     }
 
     //detete user
